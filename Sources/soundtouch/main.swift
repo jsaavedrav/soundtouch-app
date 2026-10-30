@@ -13,6 +13,8 @@ Uso:
   soundtouch <ip> source <AUX | BLUETOOTH | ...>
   soundtouch <ip> play <url-del-stream> [nombre]
   soundtouch <ip> stop
+  soundtouch <ip> group <ip-otro>      # el otro parlante suena junto a este
+  soundtouch <ip> ungroup <ip-otro>
   soundtouch radio <nombre>
 """
 
@@ -89,6 +91,17 @@ do {
             try await client.renderer.play(url, title: args.dropFirst(3).first ?? "Radio")
         case "stop":
             try await client.renderer.stop()
+        case "group", "ungroup":
+            guard let other = value else { fail(usage) }
+            let masterID = try await client.info().deviceID
+            let member = Zone.Member(deviceID: try await SoundTouchClient(host: other).info().deviceID, ipAddress: other)
+            if command == "ungroup" {
+                try await client.removeZoneMembers([member], masterID: masterID)
+            } else if try await client.zone()?.masterID == masterID {
+                try await client.addZoneMembers([member], masterID: masterID)
+            } else {
+                try await client.createZone(deviceID: masterID, members: [member])
+            }
         default:
             fail(usage)
         }

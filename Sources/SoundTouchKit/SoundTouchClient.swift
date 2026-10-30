@@ -110,12 +110,12 @@ public struct SoundTouchClient: Sendable {
     // MARK: HTTP
 
     @discardableResult
-    private func get(_ path: String) async throws -> XMLTree {
+    func get(_ path: String) async throws -> XMLTree {
         try await send(path, method: "GET", body: nil)
     }
 
     @discardableResult
-    private func post(_ path: String, body: String) async throws -> XMLTree {
+    func post(_ path: String, body: String) async throws -> XMLTree {
         try await send(path, method: "POST", body: body)
     }
 

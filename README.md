@@ -17,7 +17,8 @@ Bose discontinued its app. It talks to each speaker's local web API only.*
       cada parlante, con búsqueda en [radio-browser.info](https://www.radio-browser.info)
       y 6 radios favoritas que reemplazan los presets.
 - [x] Qué está sonando, play/pausa y, en Spotify, siguiente/anterior.
-- [ ] Multiroom y que los botones 1–6 del parlante vuelvan a funcionar (ver los
+- [x] Multiroom: agrupar parlantes para que suenen juntos.
+- [ ] Que los botones 1–6 del parlante vuelvan a funcionar (ver los
       [issues](https://github.com/jsaavedrav/soundtouch-app/issues)).
 
 Probado con un SoundTouch 10 y un SoundTouch 20 (primera versión, sin
@@ -71,6 +72,8 @@ swift run soundtouch 192.168.1.20 source AUX
 swift run soundtouch radio "radio paradise"   # busca radios
 swift run soundtouch 192.168.1.20 play http://stream.radioparadise.com/mp3-128 "Radio Paradise"
 swift run soundtouch 192.168.1.20 stop
+swift run soundtouch 192.168.1.20 group 192.168.1.169    # suenan juntos
+swift run soundtouch 192.168.1.20 ungroup 192.168.1.169
 ```
 
 ## Usar `SoundTouchKit`

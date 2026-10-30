@@ -16,6 +16,9 @@ final class SpeakerModel: Identifiable {
     var nowPlaying: NowPlaying?
     /// The radio this app sent to the speaker, while it is still playing it.
     var station: RadioStation?
+    var deviceID: String?
+    /// The multiroom group this speaker is in, if any.
+    var zone: Zone?
     var errorMessage: String?
     var isLoaded = false
 
@@ -45,8 +48,11 @@ final class SpeakerModel: Identifiable {
 
             if !isLoaded {
                 inputs = try await client.sources().filter(\.isPhysicalInput)
-                name = try await client.info().name
+                let info = try await client.info()
+                name = info.name
+                deviceID = info.deviceID
             }
+            zone = try? await client.zone()
             isLoaded = true
             errorMessage = nil
         } catch {
@@ -65,6 +71,36 @@ final class SpeakerModel: Identifiable {
             try? await Task.sleep(for: .seconds(5))
             await refresh()
         }
+    }
+
+    // MARK: Multiroom
+
+    var isZoneMaster: Bool {
+        guard let zone, let deviceID else { return false }
+        return zone.masterID == deviceID
+    }
+
+    /// Whether `other` follows this speaker in its group.
+    func leads(_ other: SpeakerModel) -> Bool {
+        guard isZoneMaster, let zone else { return false }
+        return zone.members.contains { $0.deviceID == other.deviceID }
+    }
+
+    /// Adds `member` to the group this speaker leads, creating the group if
+    /// needed, or removes it.
+    func setMember(_ member: SpeakerModel, included: Bool) async {
+        guard let masterID = deviceID, let memberID = member.deviceID else { return }
+        let entry = Zone.Member(deviceID: memberID, ipAddress: member.host)
+        await perform { client in
+            if !included {
+                try await client.removeZoneMembers([entry], masterID: masterID)
+            } else if let zone = try await client.zone(), zone.masterID == masterID {
+                try await client.addZoneMembers([entry], masterID: masterID)
+            } else {
+                try await client.createZone(deviceID: masterID, members: [entry])
+            }
+        }
+        await member.refresh()
     }
 
     // MARK: Commands
