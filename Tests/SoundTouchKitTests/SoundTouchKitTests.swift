@@ -250,3 +250,40 @@ final class PlaybackTests: XCTestCase {
         XCTAssertNil(stations[1].countryCode)
     }
 }
+
+final class ZoneTests: XCTestCase {
+    private let st20 = Zone.Member(deviceID: "AABBCCDDEEFF", ipAddress: "192.168.1.169")
+
+    func testZoneParsing() async throws {
+        let transport = FakeTransport()
+        transport.on("GET /getZone", #"<?xml version="1.0" encoding="UTF-8" ?><zone master="112233445566" senderIPAddress="192.168.1.20" senderIsMaster="true"><member ipaddress="192.168.1.169">AABBCCDDEEFF</member></zone>"#)
+        transport.on("GET /getZone", #"<?xml version="1.0" encoding="UTF-8" ?><zone />"#)
+        let client = SoundTouchClient(host: "192.168.1.20", transport: transport)
+
+        let zone = try await client.zone()
+        XCTAssertEqual(zone?.masterID, "112233445566")
+        XCTAssertEqual(zone?.members, [st20])
+
+        let none = try await client.zone()
+        XCTAssertNil(none)
+    }
+
+    func testZoneCommands() async throws {
+        let transport = FakeTransport()
+        for path in ["/setZone", "/addZoneSlave", "/removeZoneSlave"] {
+            transport.on("POST \(path)", Fixtures.status(path))
+        }
+        let client = SoundTouchClient(host: "192.168.1.20", transport: transport)
+
+        try await client.createZone(deviceID: "112233445566", members: [st20])
+        try await client.addZoneMembers([st20], masterID: "112233445566")
+        try await client.removeZoneMembers([st20], masterID: "112233445566")
+
+        XCTAssertEqual(transport.requests.map { $0.url?.path }, ["/setZone", "/addZoneSlave", "/removeZoneSlave"])
+        XCTAssertEqual(transport.bodies, [
+            #"<zone master="112233445566" senderIPAddress="192.168.1.20"><member ipaddress="192.168.1.169">AABBCCDDEEFF</member></zone>"#,
+            #"<zone master="112233445566"><member ipaddress="192.168.1.169">AABBCCDDEEFF</member></zone>"#,
+            #"<zone master="112233445566"><member ipaddress="192.168.1.169">AABBCCDDEEFF</member></zone>"#,
+        ])
+    }
+}

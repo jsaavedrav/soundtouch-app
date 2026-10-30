@@ -13,7 +13,7 @@ struct ContentView: View {
                 if !model.speakers.isEmpty {
                     List {
                         ForEach(model.speakers) { speaker in
-                            SpeakerSection(speaker: speaker) { isShowingRadios = true }
+                            SpeakerSection(speaker: speaker, allSpeakers: model.speakers) { isShowingRadios = true }
                         }
                     }
                     .refreshable { await model.discover() }
@@ -73,6 +73,7 @@ struct ContentView: View {
 /// Power, volume and input controls for one speaker.
 struct SpeakerSection: View {
     let speaker: SpeakerModel
+    let allSpeakers: [SpeakerModel]
     var onAddRadios: () -> Void
 
     /// The slider keeps its own value so updates from the speaker do not
@@ -156,6 +157,8 @@ struct SpeakerSection: View {
         }
 
         NowPlayingRow(speaker: speaker)
+
+        GroupRow(speaker: speaker, allSpeakers: allSpeakers)
 
         FavoriteStationsGrid(speaker: speaker, onAdd: onAddRadios)
     }
