@@ -1,0 +1,42 @@
+# Generate the Xcode project with XcodeGen: `brew install xcodegen && xcodegen`
+name: SoundTouch
+options:
+  bundleIdPrefix: io.github.jsaavedrav
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+packages:
+  SoundTouchKit:
+    path: ..
+targets:
+  SoundTouch:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources: [Sources]
+    dependencies:
+      - package: SoundTouchKit
+    scheme: {}
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: SoundTouch
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.music
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: Para encontrar y controlar tus parlantes SoundTouch en tu red Wi-Fi.
+        NSBonjourServices: [_soundtouch._tcp]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    entitlements:
+      path: Sources/SoundTouch.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.jsaavedrav.soundtouch
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "5.0"

@@ -125,7 +125,45 @@ public struct SoundTouchClient: Sendable {
     }
 
     var baseURL: URL {
-        let hostPart = host.contains(":") ? "[\(host)]" : host
-        return URL(string: "http://\(hostPart):\(port)/")!
+        URL(string: "http://\(urlHost):\(port)/")!
+    }
+
+    /// IPv6 addresses need brackets inside a URL.
+    var urlHost: String {
+        host.contains(":") ? "[\(host)]" : host
+    }
+}
+
+// MARK: - Change notifications
+
+extension SoundTouchClient {
+    /// Port of the speaker's WebSocket, which pushes a message on every change.
+    public static let notificationPort = 8080
+
+    /// Yields each time the speaker reports a change (volume, source, power,
+    /// track...), including changes made with its buttons or remote. Read the
+    /// new state with the other methods. The stream ends when the connection
+    /// drops; start a new one to reconnect.
+    public func changes() -> AsyncStream<Void> {
+        let url = URL(string: "ws://\(urlHost):\(Self.notificationPort)/")!
+        return AsyncStream { continuation in
+            let task = URLSession.shared.webSocketTask(with: url, protocols: ["gabbo"])
+
+            @Sendable func receiveNext() {
+                task.receive { result in
+                    switch result {
+                    case .success:
+                        continuation.yield()
+                        receiveNext()
+                    case .failure:
+                        continuation.finish()
+                    }
+                }
+            }
+
+            continuation.onTermination = { _ in task.cancel(with: .goingAway, reason: nil) }
+            task.resume()
+            receiveNext()
+        }
     }
 }
