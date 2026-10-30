@@ -13,6 +13,9 @@ final class SpeakerModel: Identifiable {
     var source = ""
     /// Physical inputs this model has (AUX, and Bluetooth when present).
     var inputs: [SourceItem] = []
+    var nowPlaying: NowPlaying?
+    /// The radio this app sent to the speaker, while it is still playing it.
+    var station: RadioStation?
     var errorMessage: String?
     var isLoaded = false
 
@@ -36,6 +39,8 @@ final class SpeakerModel: Identifiable {
             let (nowPlaying, volume) = try await (playing, currentVolume)
             isOn = !nowPlaying.isStandby
             source = nowPlaying.source
+            self.nowPlaying = nowPlaying
+            if nowPlaying.source != "UPNP" { station = nil }
             self.volume = volume.actual
 
             if !isLoaded {
@@ -79,6 +84,38 @@ final class SpeakerModel: Identifiable {
     func volumeUp() async { await perform { try await $0.volumeUp() } }
     func volumeDown() async { await perform { try await $0.volumeDown() } }
 
+    /// Plays a radio through the speaker's UPnP renderer, turning it on first.
+    func play(_ station: RadioStation) async {
+        self.station = station
+        await perform { client in
+            try await client.powerOn()
+            try await client.renderer.play(station.streamURL, title: station.name, mimeType: station.mimeType)
+        }
+    }
+
+    /// Radio streams cannot pause, so radio stops; anything else toggles.
+    func playPause() async {
+        if source == "UPNP" {
+            await perform { try await $0.renderer.stop() }
+        } else {
+            await perform { try await $0.press(.playPause) }
+        }
+    }
+
+    func nextTrack() async { await perform { try await $0.press(.nextTrack) } }
+    func previousTrack() async { await perform { try await $0.press(.previousTrack) } }
+
+    /// Names of the radio presets stored in the speaker, to help find those
+    /// radios again. They stopped working with Bose's cloud.
+    func oldRadioPresetNames() async -> [String] {
+        let presets = (try? await client.presets()) ?? []
+        var names: [String] = []
+        for preset in presets where preset.source == "TUNEIN" || preset.source.contains("RADIO") {
+            if let name = preset.name, !names.contains(name) { names.append(name) }
+        }
+        return names
+    }
+
     func select(_ item: SourceItem) async {
         source = item.source
         await perform { try await $0.select(item) }
@@ -95,6 +132,9 @@ final class SpeakerModel: Identifiable {
     }
 
     private static func message(for error: Error) -> String {
+        if case let .upnp(code, description)? = error as? SoundTouchError {
+            return "El parlante no pudo reproducir esa radio (\(code) \(description))."
+        }
         guard case let .api(code, name)? = error as? SoundTouchError else {
             return "No pude conectarme con el parlante."
         }
@@ -141,5 +181,40 @@ final class SpeakerListModel {
         guard !speakers.contains(where: { $0.host == host }) else { return }
         speakers.append(SpeakerModel(host: host, name: name))
         speakers.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+}
+
+/// Up to six favorite radios, shared by every speaker. They replace the
+/// presets that depended on Bose's cloud.
+@MainActor
+@Observable
+final class FavoriteStations {
+    static let limit = 6
+    private static let key = "favoriteStations"
+
+    private(set) var stations: [RadioStation]
+
+    init() {
+        let data = UserDefaults.standard.data(forKey: Self.key)
+        stations = data.flatMap { try? JSONDecoder().decode([RadioStation].self, from: $0) } ?? []
+    }
+
+    var isFull: Bool { stations.count >= Self.limit }
+
+    func contains(_ station: RadioStation) -> Bool {
+        stations.contains { $0.id == station.id }
+    }
+
+    func toggle(_ station: RadioStation) {
+        if contains(station) {
+            stations.removeAll { $0.id == station.id }
+        } else if !isFull {
+            stations.append(station)
+        }
+        save()
+    }
+
+    private func save() {
+        UserDefaults.standard.set(try? JSONEncoder().encode(stations), forKey: Self.key)
     }
 }

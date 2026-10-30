@@ -11,6 +11,9 @@ Uso:
   soundtouch <ip> volume [0-100 | up | down]
   soundtouch <ip> sources
   soundtouch <ip> source <AUX | BLUETOOTH | ...>
+  soundtouch <ip> play <url-del-stream> [nombre]
+  soundtouch <ip> stop
+  soundtouch radio <nombre>
 """
 
 func fail(_ message: String) -> Never {
@@ -40,6 +43,11 @@ do {
         if speakers.isEmpty { fail("No encontré parlantes en la red.") }
         for speaker in speakers {
             print("\(speaker.host)\t\(speaker.name)\t\(speaker.type ?? "")")
+        }
+
+    case ("radio"?, let name?):
+        for station in try await RadioBrowser().search(name: name, limit: 10) {
+            print("\(station.streamURL)\t\(station.name)\t\(station.countryCode ?? "")")
         }
 
     case let (host?, command?):
@@ -75,6 +83,12 @@ do {
                 fail("Este parlante no tiene la fuente \(name).")
             }
             try await client.select(item)
+        case "play":
+            guard let value, let url = URL(string: value) else { fail(usage) }
+            try await client.powerOn()
+            try await client.renderer.play(url, title: args.dropFirst(3).first ?? "Radio")
+        case "stop":
+            try await client.renderer.stop()
         default:
             fail(usage)
         }

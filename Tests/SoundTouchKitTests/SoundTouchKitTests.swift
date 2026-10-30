@@ -176,3 +176,77 @@ final class ClientTests: XCTestCase {
         }
     }
 }
+
+final class PlaybackTests: XCTestCase {
+    private func xml(_ string: String) throws -> XMLTree {
+        try XMLTree.parse(Data(string.utf8))
+    }
+
+    func testNowPlayingArtAndStatus() throws {
+        let playing = try NowPlaying(xml: xml(Fixtures.nowPlayingWithArt))
+        XCTAssertEqual(playing.artURL, URL(string: "https://i.scdn.co/image/abc"))
+        XCTAssertEqual(playing.playStatus, "PAUSE_STATE")
+        XCTAssertFalse(playing.isPlaying)
+        XCTAssertNil(try NowPlaying(xml: xml(Fixtures.nowPlayingStandby)).artURL)
+    }
+
+    func testPresets() async throws {
+        let transport = FakeTransport()
+        transport.on("GET /presets", Fixtures.presets)
+        let presets = try await SoundTouchClient(host: "192.168.1.20", transport: transport).presets()
+        XCTAssertEqual(presets.map(\.id), [1, 5])
+        XCTAssertEqual(presets.map(\.name), ["Sonar FM", "Mi playlist"])
+        XCTAssertEqual(presets.map(\.source), ["TUNEIN", "SPOTIFY"])
+    }
+
+    func testRendererPlaySendsURIThenPlay() async throws {
+        let transport = FakeTransport()
+        transport.on("POST /AVTransport/Control", "<ok/>")
+        let renderer = UPnPRenderer(host: "192.168.1.20", transport: transport)
+        try await renderer.play(URL(string: "http://example.com/a.mp3?x=1&y=2")!, title: "Rock & Pop")
+
+        XCTAssertEqual(transport.requests.first?.url?.absoluteString, "http://192.168.1.20:8091/AVTransport/Control")
+        XCTAssertEqual(transport.requests.map { $0.value(forHTTPHeaderField: "SOAPACTION") }, [
+            #""urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI""#,
+            #""urn:schemas-upnp-org:service:AVTransport:1#Play""#,
+        ])
+
+        // The body must stay well-formed XML, with the metadata escaped inside it.
+        let setURI = try xml(transport.bodies[0])
+        XCTAssertEqual(setURI.first(named: "CurrentURI")?.text, "http://example.com/a.mp3?x=1&y=2")
+        let metadata = try XCTUnwrap(setURI.first(named: "CurrentURIMetaData")?.text)
+        let didl = try xml(metadata)
+        XCTAssertEqual(didl.first(named: "title")?.text, "Rock & Pop")
+        XCTAssertEqual(didl.first(named: "res")?["protocolInfo"], "http-get:*:audio/mpeg:*")
+    }
+
+    func testRendererFault() async {
+        let transport = FakeTransport()
+        transport.on("POST /AVTransport/Control", status: 500, Fixtures.upnpFault)
+        do {
+            try await UPnPRenderer(host: "192.168.1.20", transport: transport).stop()
+            XCTFail("Expected an error")
+        } catch {
+            XCTAssertEqual(error as? SoundTouchError, .upnp(code: 714, description: "Illegal MIME-type"))
+        }
+    }
+
+    func testRadioBrowserSearch() async throws {
+        let transport = FakeTransport()
+        transport.on("GET /json/stations/search", Fixtures.radioBrowser)
+        let stations = try await RadioBrowser(server: URL(string: "https://radio.example")!, transport: transport)
+            .search(name: "Rock & Pop", countryCode: "CL")
+
+        let query = URLComponents(url: try XCTUnwrap(transport.requests.first?.url), resolvingAgainstBaseURL: false)?.queryItems ?? []
+        XCTAssertTrue(query.contains(URLQueryItem(name: "name", value: "Rock & Pop")))
+        XCTAssertTrue(query.contains(URLQueryItem(name: "countrycode", value: "CL")))
+
+        XCTAssertEqual(stations.map(\.name), ["Radio Uno", "Radio Dos"])
+        XCTAssertEqual(stations[0].streamURL.absoluteString, "http://example.com/stream.mp3")
+        XCTAssertNil(stations[0].faviconURL)
+        XCTAssertEqual(stations[1].streamURL.absoluteString, "https://example.com/aac")
+        XCTAssertEqual(stations[1].mimeType, "audio/aac")
+        XCTAssertNil(stations[1].bitrate)
+        XCTAssertNil(stations[1].countryCode)
+    }
+}

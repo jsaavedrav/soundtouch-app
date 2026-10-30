@@ -3,7 +3,9 @@ import SoundTouchKit
 
 struct ContentView: View {
     @State private var model = SpeakerListModel()
+    @State private var favorites = FavoriteStations()
     @State private var isAddingSpeaker = false
+    @State private var isShowingRadios = false
 
     var body: some View {
         NavigationStack {
@@ -11,7 +13,7 @@ struct ContentView: View {
                 if !model.speakers.isEmpty {
                     List {
                         ForEach(model.speakers) { speaker in
-                            SpeakerSection(speaker: speaker)
+                            SpeakerSection(speaker: speaker) { isShowingRadios = true }
                         }
                     }
                     .refreshable { await model.discover() }
@@ -32,6 +34,13 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem {
                     Button {
+                        isShowingRadios = true
+                    } label: {
+                        Label("Radios", systemImage: "radio")
+                    }
+                }
+                ToolbarItem {
+                    Button {
                         Task { await model.discover() }
                     } label: {
                         Label("Buscar parlantes", systemImage: "arrow.clockwise")
@@ -49,14 +58,22 @@ struct ContentView: View {
             .sheet(isPresented: $isAddingSpeaker) {
                 AddSpeakerView { model.addManually(host: $0) }
             }
+            .sheet(isPresented: $isShowingRadios) {
+                RadioSearchView {
+                    await model.speakers.first?.oldRadioPresetNames() ?? []
+                }
+                .environment(favorites)
+            }
             .task { await model.discover() }
         }
+        .environment(favorites)
     }
 }
 
 /// Power, volume and input controls for one speaker.
 struct SpeakerSection: View {
     let speaker: SpeakerModel
+    var onAddRadios: () -> Void
 
     /// The slider keeps its own value so updates from the speaker do not
     /// move it while the user is dragging.
@@ -138,9 +155,9 @@ struct SpeakerSection: View {
             .pickerStyle(.segmented)
         }
 
-        if speaker.isOn, !speaker.inputs.contains(where: { $0.source == speaker.source }) {
-            LabeledContent("Sonando desde", value: displayName(of: speaker.source))
-        }
+        NowPlayingRow(speaker: speaker)
+
+        FavoriteStationsGrid(speaker: speaker, onAdd: onAddRadios)
     }
 }
 
@@ -150,6 +167,7 @@ func displayName(of source: String) -> String {
     case "BLUETOOTH": return "Bluetooth"
     case "SPOTIFY": return "Spotify"
     case "AIRPLAY": return "AirPlay"
+    case "UPNP": return "Radio"
     case "TUNEIN": return "TuneIn"
     case "INTERNET_RADIO": return "Radio"
     case "ALEXA": return "Alexa"

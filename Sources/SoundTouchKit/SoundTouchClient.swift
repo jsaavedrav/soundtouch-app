@@ -53,6 +53,20 @@ public struct SoundTouchClient: Sendable {
         return try xml.children(named: "sourceItem").map(SourceItem.init(xml:))
     }
 
+    /// The six presets stored in the speaker. Presets that pointed to Bose's
+    /// cloud (TuneIn, and Spotify on many speakers) no longer play.
+    public func presets() async throws -> [Preset] {
+        let xml = try await get("/presets")
+        guard xml.name == "presets" else { throw SoundTouchError.invalidResponse }
+        return try xml.children(named: "preset").map(Preset.init(xml:))
+    }
+
+    /// The speaker's UPnP renderer, used to play internet radio and other
+    /// audio URLs without Bose's cloud.
+    public var renderer: UPnPRenderer {
+        UPnPRenderer(host: host, timeout: timeout, transport: transport)
+    }
+
     public func isPoweredOn() async throws -> Bool {
         try await !nowPlaying().isStandby
     }
