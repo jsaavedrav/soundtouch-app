@@ -13,12 +13,30 @@ Bose discontinued its app. It talks to each speaker's local web API only.*
       del MVP (encender y apagar, volumen, cambio de fuente AUX / Bluetooth).
 - [x] App SwiftUI para iPhone y Mac: encuentra los parlantes y controla
       encendido, volumen y fuente, al día con los botones físicos.
-- [ ] Radio por internet, Spotify, presets y multiroom.
+- [ ] Radio por internet, Spotify, presets y multiroom (ver los
+      [issues](https://github.com/jsaavedrav/soundtouch-app/issues)).
 
 Probado con un SoundTouch 10 y un SoundTouch 20 (primera versión, sin
 Bluetooth), firmware 27.0.6.
 
-## Instalar la app en tu iPhone o Mac
+## Descargar para Mac
+
+Descarga `SoundTouch-…-macOS.zip` de la [última versión](https://github.com/jsaavedrav/soundtouch-app/releases/latest),
+descomprímelo y mueve **SoundTouch** a Aplicaciones. Funciona en Mac con Apple
+Silicon e Intel, con macOS 14 o superior.
+
+La app no está firmada con una cuenta de Apple Developer, así que la primera vez
+macOS la bloquea. Para abrirla, intenta abrirla una vez y luego ve a
+*Ajustes del Sistema* → *Privacidad y seguridad* → **Abrir igualmente**. También
+puedes quitar la marca de descarga desde la terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/SoundTouch.app
+```
+
+Para el iPhone por ahora hay que compilarla con Xcode (ver abajo).
+
+## Compilar la app para tu iPhone o Mac
 
 Requiere Xcode 16 o superior y [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
@@ -70,6 +88,20 @@ En iOS la app debe declarar `NSLocalNetworkUsageDescription` y
 
 ```sh
 swift test
+```
+
+## Contribuir
+
+Las ideas, reportes y PR son bienvenidos. Revisa [CONTRIBUTING.md](CONTRIBUTING.md)
+y los [issues abiertos](https://github.com/jsaavedrav/soundtouch-app/issues).
+
+## Publicar una versión
+
+Crea un tag `v` + versión y súbelo. El workflow *Release* compila la app para
+Mac y la publica en GitHub Releases:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
 ## Licencia

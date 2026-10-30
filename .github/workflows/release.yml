@@ -1,0 +1,44 @@
+name: Release
+
+# Push a tag like v0.1.0 to publish the Mac app on GitHub Releases.
+# On pull requests that touch this workflow it only builds and packages.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-15
+    env:
+      VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v0.0.0-dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          cd App && xcodegen generate
+      - name: Build universal app
+        run: >
+          xcodebuild build -project App/SoundTouch.xcodeproj -scheme SoundTouch
+          -configuration Release -destination 'generic/platform=macOS'
+          -derivedDataPath build
+          MARKETING_VERSION="${VERSION#v}" CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}"
+          CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
+      - name: Package
+        run: |
+          APP=build/Build/Products/Release/SoundTouch.app
+          lipo -info "$APP/Contents/MacOS/SoundTouch"
+          codesign --verify --verbose "$APP"
+          ditto -c -k --keepParent "$APP" "SoundTouch-${VERSION}-macOS.zip"
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$VERSION" "SoundTouch-${VERSION}-macOS.zip"
+          --title "SoundTouch $VERSION" --generate-notes
