@@ -7,6 +7,8 @@ public enum SoundTouchError: Error, Equatable, Sendable {
     case http(status: Int)
     /// The speaker rejected the request, e.g. `1005 UNKNOWN_SOURCE_ERROR`.
     case api(code: Int, name: String)
+    /// The speaker's UPnP renderer rejected the request.
+    case upnp(code: Int, description: String)
 }
 
 /// Response of `GET /info`.
@@ -58,9 +60,14 @@ public struct NowPlaying: Sendable, Equatable {
     public var artist: String?
     public var album: String?
     public var stationName: String?
+    /// Cover art or station logo, when the speaker has one.
+    public var artURL: URL?
+    /// `PLAY_STATE`, `PAUSE_STATE`, `STOP_STATE` or `BUFFERING_STATE`.
+    public var playStatus: String?
 
     /// The speaker reports `STANDBY` as its source while it is off.
     public var isStandby: Bool { source == "STANDBY" }
+    public var isPlaying: Bool { playStatus == "PLAY_STATE" || playStatus == "BUFFERING_STATE" }
 
     init(xml: XMLTree) throws {
         guard xml.name == "nowPlaying", let source = xml["source"] else {
@@ -73,6 +80,28 @@ public struct NowPlaying: Sendable, Equatable {
         self.artist = xml.text(of: "artist")
         self.album = xml.text(of: "album")
         self.stationName = xml.text(of: "stationName")
+        if let art = xml.child("art"), art["artImageStatus"] == "IMAGE_PRESENT" {
+            self.artURL = URL(string: art.text)
+        }
+        self.playStatus = xml.text(of: "playStatus")
+    }
+}
+
+/// One of the six presets stored in the speaker (`GET /presets`).
+public struct Preset: Sendable, Equatable, Identifiable {
+    public var id: Int
+    public var name: String?
+    public var source: String
+
+    init(xml: XMLTree) throws {
+        guard xml.name == "preset",
+              let id = xml["id"].flatMap(Int.init),
+              let item = xml.child("ContentItem"),
+              let source = item["source"]
+        else { throw SoundTouchError.invalidResponse }
+        self.id = id
+        self.source = source
+        self.name = item.text(of: "itemName")
     }
 }
 

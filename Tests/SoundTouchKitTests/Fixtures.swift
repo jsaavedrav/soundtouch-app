@@ -37,3 +37,23 @@ enum Fixtures {
         #"<?xml version="1.0" encoding="UTF-8" ?><status>\#(path)</status>"#
     }
 }
+
+extension Fixtures {
+    static let presets = """
+    <?xml version="1.0" encoding="UTF-8" ?><presets><preset id="1" createdOn="1542849568" updatedOn="1558470492"><ContentItem source="TUNEIN" type="stationurl" location="/v1/playback/station/s1" isPresetable="true"><itemName>Sonar FM</itemName></ContentItem></preset><preset id="5" createdOn="1542849696" updatedOn="1585255012"><ContentItem source="SPOTIFY" type="uri" location="spotify:playlist:x" sourceAccount="account1" isPresetable="true"><itemName>Mi playlist</itemName></ContentItem></preset></presets>
+    """
+
+    static let nowPlayingWithArt = """
+    <?xml version="1.0" encoding="UTF-8" ?><nowPlaying deviceID="AABBCCDDEEFF" source="SPOTIFY"><ContentItem source="SPOTIFY" isPresetable="true"><itemName>Go</itemName></ContentItem><track>Song</track><art artImageStatus="IMAGE_PRESENT">https://i.scdn.co/image/abc</art><playStatus>PAUSE_STATE</playStatus></nowPlaying>
+    """
+
+    static let upnpFault = """
+    <?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><s:Fault><faultcode>s:Client</faultcode><faultstring>UPnPError</faultstring><detail><UPnPError xmlns="urn:schemas-upnp-org:control-1-0"><errorCode>714</errorCode><errorDescription>Illegal MIME-type</errorDescription></UPnPError></detail></s:Fault></s:Body></s:Envelope>
+    """
+
+    static let radioBrowser = """
+    [{"stationuuid":"uuid-1","name":" Radio Uno ","url":"http://example.com/raw","url_resolved":"http://example.com/stream.mp3","favicon":"","countrycode":"CL","codec":"MP3","bitrate":128},
+     {"stationuuid":"uuid-2","name":"Radio Dos","url":"https://example.com/aac","url_resolved":"","favicon":"https://example.com/logo.png","countrycode":"","codec":"AAC","bitrate":0},
+     {"stationuuid":"uuid-3","name":"Broken","url":"rtsp://example.com/x","url_resolved":"","favicon":null,"countrycode":null,"codec":null,"bitrate":null}]
+    """
+}

@@ -13,7 +13,11 @@ Bose discontinued its app. It talks to each speaker's local web API only.*
       del MVP (encender y apagar, volumen, cambio de fuente AUX / Bluetooth).
 - [x] App SwiftUI para iPhone y Mac: encuentra los parlantes y controla
       encendido, volumen y fuente, al día con los botones físicos.
-- [ ] Radio por internet, Spotify, presets y multiroom (ver los
+- [x] Radio por internet sin la nube de Bose, a través del reproductor UPnP de
+      cada parlante, con búsqueda en [radio-browser.info](https://www.radio-browser.info)
+      y 6 radios favoritas que reemplazan los presets.
+- [x] Qué está sonando, play/pausa y, en Spotify, siguiente/anterior.
+- [ ] Multiroom y que los botones 1–6 del parlante vuelvan a funcionar (ver los
       [issues](https://github.com/jsaavedrav/soundtouch-app/issues)).
 
 Probado con un SoundTouch 10 y un SoundTouch 20 (primera versión, sin
@@ -64,6 +68,9 @@ swift run soundtouch 192.168.1.20 on        # u off
 swift run soundtouch 192.168.1.20 volume 25 # o up / down
 swift run soundtouch 192.168.1.20 sources   # entradas físicas disponibles
 swift run soundtouch 192.168.1.20 source AUX
+swift run soundtouch radio "radio paradise"   # busca radios
+swift run soundtouch 192.168.1.20 play http://stream.radioparadise.com/mp3-128 "Radio Paradise"
+swift run soundtouch 192.168.1.20 stop
 ```
 
 ## Usar `SoundTouchKit`
