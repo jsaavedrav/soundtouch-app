@@ -11,11 +11,29 @@ Bose discontinued its app. It talks to each speaker's local web API only.*
 
 - [x] `SoundTouchKit`: paquete Swift con descubrimiento Bonjour y los comandos
       del MVP (encender y apagar, volumen, cambio de fuente AUX / Bluetooth).
-- [ ] App SwiftUI para iPhone y Mac.
+- [x] App SwiftUI para iPhone y Mac: encuentra los parlantes y controla
+      encendido, volumen y fuente, al día con los botones físicos.
 - [ ] Radio por internet, Spotify, presets y multiroom.
 
 Probado con un SoundTouch 10 y un SoundTouch 20 (primera versión, sin
 Bluetooth), firmware 27.0.6.
+
+## Instalar la app en tu iPhone o Mac
+
+Requiere Xcode 16 o superior y [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+
+```sh
+brew install xcodegen
+cd App && xcodegen && open SoundTouch.xcodeproj
+```
+
+En Xcode, abre el target *SoundTouch* → *Signing & Capabilities* y elige tu
+equipo (sirve una cuenta de Apple gratuita). Luego elige tu iPhone o *My Mac*
+como destino y pulsa ▶. La primera vez, iOS pide permiso para usar la red
+local: acéptalo, porque sin él no puede encontrar los parlantes.
+
+Si la búsqueda no encuentra un parlante, puedes agregarlo por su IP con el
+botón **+**.
 
 ## Probar desde la terminal (macOS)
 
